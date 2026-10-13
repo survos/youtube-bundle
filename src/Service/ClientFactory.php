@@ -20,7 +20,7 @@ class ClientFactory
 
     public function forReading(): Client
     {
-        if ($this->apiKey === '') {
+        if ('' === $this->apiKey) {
             return $this->authorized();
         }
         $client = new Client();
@@ -33,9 +33,9 @@ class ClientFactory
     {
         $client = new Client();
         $client->setApplicationName('Survos YouTube');
-        if ($this->authConfig !== '') {
+        if ('' !== $this->authConfig) {
             $client->setAuthConfig($this->authConfig);
-        } elseif ($this->clientId !== '' && $this->clientSecret !== '') {
+        } elseif ('' !== $this->clientId && '' !== $this->clientSecret) {
             $client->setClientId($this->clientId);
             $client->setClientSecret($this->clientSecret);
         } else {
@@ -76,7 +76,7 @@ class ClientFactory
         if (empty($token['refresh_token']) && !empty($previous['refresh_token'])) {
             $token['refresh_token'] = $previous['refresh_token'];
         }
-        if ($this->tokenFile === '') {
+        if ('' === $this->tokenFile) {
             throw new \RuntimeException('Configure a writable token_file.');
         }
         PrivateJsonFile::write($this->tokenFile, $token);

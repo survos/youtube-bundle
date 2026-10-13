@@ -25,7 +25,7 @@ final class LoopbackAuthorization
         $client->setState($state);
         $url = $client->createAuthUrl().'&code_challenge_method=S256&code_challenge='.rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
         $server = @stream_socket_server('tcp://127.0.0.1:'.$port, $errno, $error);
-        if ($server === false) {
+        if (false === $server) {
             throw new \RuntimeException('Cannot listen on the OAuth callback port. Choose another --port.');
         }
         try {
@@ -33,7 +33,7 @@ final class LoopbackAuthorization
             $deadline = microtime(true) + $timeout;
             while (($remaining = $deadline - microtime(true)) > 0) {
                 $connection = @stream_socket_accept($server, $remaining);
-                if ($connection === false) {
+                if (false === $connection) {
                     break;
                 }
                 try {
@@ -77,7 +77,7 @@ final class LoopbackAuthorization
         if (isset($query['error'])) {
             throw new \RuntimeException('Google authorization was declined.');
         }
-        if (!is_string($query['code'] ?? null) || $query['code'] === '') {
+        if (!is_string($query['code'] ?? null) || '' === $query['code']) {
             throw new \InvalidArgumentException('Missing authorization code.');
         }
 

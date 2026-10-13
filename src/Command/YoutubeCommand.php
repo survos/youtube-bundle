@@ -24,6 +24,7 @@ final class YoutubeCommand
     {
         $this->authorization->authorize(static fn (string $url) => $io->writeln(['Open this URL in your browser and select the channel:', $url]), $port, $timeout);
         $io->success('Authorization saved. Run youtube:channel to verify the channel.');
+
         return Command::SUCCESS;
     }
 
@@ -32,6 +33,7 @@ final class YoutubeCommand
     {
         $channel = $this->youtube->channel();
         $io->table(['Channel ID', 'Title'], [[$channel->getId(), $channel->getSnippet()?->getTitle()]]);
+
         return Command::SUCCESS;
     }
 
@@ -41,6 +43,7 @@ final class YoutubeCommand
         foreach ($this->youtube->videos($channel, $limit) as $video) {
             $io->writeln(json_encode($video->toSimpleObject(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), SymfonyStyle::OUTPUT_RAW);
         }
+
         return Command::SUCCESS;
     }
 
@@ -59,12 +62,13 @@ final class YoutubeCommand
         #[Option('Notify subscribers (off by default)')] bool $notify = false,
         #[Option('Validate local inputs without network requests')] bool $dryRun = false,
     ): int {
-        if ($descriptionFile !== null && (!is_file($descriptionFile) || !is_readable($descriptionFile))) {
+        if (null !== $descriptionFile && (!is_file($descriptionFile) || !is_readable($descriptionFile))) {
             throw new \InvalidArgumentException('Description file must be readable.');
         }
-        $upload = new Upload($filename, $title, $descriptionFile === null ? '' : file_get_contents($descriptionFile), $visibility, $category, $tags === '' ? [] : array_map('trim', explode(',', $tags)), $madeForKids, $notify, $thumbnail);
+        $upload = new Upload($filename, $title, null === $descriptionFile ? '' : file_get_contents($descriptionFile), $visibility, $category, '' === $tags ? [] : array_map('trim', explode(',', $tags)), $madeForKids, $notify, $thumbnail);
         if ($dryRun) {
             $io->success('Local inputs are valid. No network requests were made.');
+
             return Command::SUCCESS;
         }
         $video = $this->youtube->upload($upload, $channelId);
@@ -74,6 +78,7 @@ final class YoutubeCommand
         if ($actual !== $visibility) {
             $io->warning('Requested visibility differs from YouTube. Unaudited API projects may be restricted to private uploads.');
         }
+
         return Command::SUCCESS;
     }
 }

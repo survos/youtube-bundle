@@ -26,7 +26,7 @@ final class YoutubeService
     public function videos(?string $channelId = null, int $limit = 0): \Generator
     {
         $channelId = $channelId ?: $this->defaultChannel;
-        if ($channelId === '' || $limit < 0) {
+        if ('' === $channelId || $limit < 0) {
             throw new \InvalidArgumentException('Supply a channel ID and a nonnegative limit (0 = all).');
         }
         $youtube = new YouTube($this->clients->forReading());
@@ -40,14 +40,14 @@ final class YoutubeService
         do {
             $items = $youtube->playlistItems->listPlaylistItems('contentDetails', array_filter([
                 'playlistId' => $playlist, 'maxResults' => 50, 'pageToken' => $page,
-            ], static fn ($v) => $v !== null));
+            ], static fn ($v) => null !== $v));
             $ids = [];
             foreach ($items->getItems() as $item) {
                 if ($id = $item->getContentDetails()?->getVideoId()) {
                     $ids[] = $id;
                 }
             }
-            if ($ids !== []) {
+            if ([] !== $ids) {
                 $videos = $youtube->videos->listVideos('snippet,statistics,contentDetails,status', ['id' => implode(',', $ids)]);
                 $byId = [];
                 foreach ($videos->getItems() as $video) {
@@ -70,11 +70,12 @@ final class YoutubeService
     public function channel(): Channel
     {
         $youtube = new YouTube($this->clients->authorized());
+
         return $youtube->channels->listChannels('snippet', ['mine' => true])->getItems()[0]
             ?? throw new \RuntimeException('No YouTube channel is associated with this authorization.');
     }
 
-    /** @param null|callable(int, int): void $progress */
+    /** @param callable(int, int): void|null $progress */
     public function upload(Upload $upload, ?string $expectedChannel = null, ?callable $progress = null): Video
     {
         $client = $this->clients->authorized();
@@ -82,14 +83,14 @@ final class YoutubeService
         $channel = $youtube->channels->listChannels('snippet', ['mine' => true])->getItems()[0]
             ?? throw new \RuntimeException('No authorized YouTube channel.');
         $expectedChannel = $expectedChannel ?: $this->defaultChannel;
-        if ($expectedChannel !== '' && $channel->getId() !== $expectedChannel) {
+        if ('' !== $expectedChannel && $channel->getId() !== $expectedChannel) {
             throw new \RuntimeException('Authorized channel does not match the requested channel. Run youtube:channel to inspect it.');
         }
         $key = hash('sha256', json_encode([$channel->getId(), hash_file('sha256', $upload->filename), $upload->video()->toSimpleObject(), $upload->notifySubscribers], JSON_THROW_ON_ERROR));
         $path = $this->uploadDirectory.'/'.$key.'.json';
         (new Filesystem())->mkdir($this->uploadDirectory, 0700);
         $lock = fopen($path.'.lock', 'c');
-        if ($lock === false) {
+        if (false === $lock) {
             throw new \RuntimeException('Cannot open the upload lock.');
         }
         try {
@@ -115,22 +116,22 @@ final class YoutubeService
                         PrivateJsonFile::write($path, $state);
                     }
                     $handle = fopen($upload->filename, 'rb');
-                    if ($handle === false) {
+                    if (false === $handle) {
                         throw new \RuntimeException('Cannot open the video.');
                     }
                     try {
                         while (!$video) {
-                            if (fseek($handle, $media->getProgress()) !== 0) {
+                            if (0 !== fseek($handle, $media->getProgress())) {
                                 throw new \RuntimeException('Cannot seek to the upload offset.');
                             }
                             $chunk = fread($handle, self::CHUNK_SIZE);
-                            if ($chunk === false || $chunk === '') {
+                            if (false === $chunk || '' === $chunk) {
                                 throw new \RuntimeException('Upload ended without a completion response. Rerun to query the saved session.');
                             }
                             $video = $media->nextChunk($chunk);
                             $state['resume_uri'] = $media->getResumeUri();
                             PrivateJsonFile::write($path, $state);
-                            if ($progress !== null) {
+                            if (null !== $progress) {
                                 $progress($video ? $size : min($size, $media->getProgress()), $size);
                             }
                         }
@@ -147,7 +148,7 @@ final class YoutubeService
                 $state = ['video' => (array) $video->toSimpleObject()];
                 PrivateJsonFile::write($path, $state);
             }
-            if ($upload->thumbnail !== null) {
+            if (null !== $upload->thumbnail) {
                 $thumbnailHash = hash_file('sha256', $upload->thumbnail);
                 if (($state['thumbnail_hash'] ?? null) !== $thumbnailHash) {
                     $youtube->thumbnails->set($video->getId(), [
@@ -159,6 +160,7 @@ final class YoutubeService
                     PrivateJsonFile::write($path, $state);
                 }
             }
+
             // Read actual visibility; Google may restrict an unaudited project's uploads to private.
             return $youtube->videos->listVideos('snippet,status', ['id' => $video->getId()])->getItems()[0]
                 ?? throw new \RuntimeException('Upload saved, but its status could not be read. Rerun safely to check again.');

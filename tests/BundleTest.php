@@ -33,11 +33,13 @@ final class BundleTest extends TestCase
             $kernel->shutdown();
         }
     }
+
     public function testOAuthRejectsWrongState(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         LoopbackAuthorization::callbackCode(['state' => 'wrong', 'code' => 'code'], 'expected');
     }
+
     public function testOAuthAcceptsMatchingStateAndRejectsDenial(): void
     {
         self::assertSame('code', LoopbackAuthorization::callbackCode(['state' => 'expected', 'code' => 'code'], 'expected'));
@@ -49,23 +51,28 @@ final class BundleTest extends TestCase
 final class YoutubeTestKernel extends Kernel
 {
     use MicroKernelTrait;
+
     public function registerBundles(): iterable
     {
         yield new FrameworkBundle();
         yield new SurvosYoutubeBundle();
     }
+
     public function getProjectDir(): string
     {
         return __DIR__.'/cache/project';
     }
+
     public function getCacheDir(): string
     {
         return __DIR__.'/cache/kernel';
     }
+
     public function getLogDir(): string
     {
         return __DIR__.'/cache/log';
     }
+
     protected function configureContainer(ContainerConfigurator $container): void
     {
         $container->extension('framework', ['secret' => 'test', 'test' => true, 'http_method_override' => false]);

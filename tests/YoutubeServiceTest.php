@@ -24,19 +24,23 @@ final class YoutubeServiceTest extends TestCase
 {
     private string $dir;
     private array $history = [];
+
     protected function setUp(): void
     {
         $this->dir = sys_get_temp_dir().'/youtube-test-'.bin2hex(random_bytes(6));
         mkdir($this->dir, 0700);
     }
+
     protected function tearDown(): void
     {
         (new Filesystem())->remove($this->dir);
     }
+
     private function json(array $body): Response
     {
         return new Response(200, ['Content-Type' => 'application/json'], json_encode($body, JSON_THROW_ON_ERROR));
     }
+
     private function service(array $responses): YoutubeService
     {
         $stack = HandlerStack::create(new MockHandler($responses));
@@ -44,29 +48,35 @@ final class YoutubeServiceTest extends TestCase
         $client = new Client();
         $client->setHttpClient(new HttpClient(['handler' => $stack]));
         $client->setAccessToken(['access_token' => 'test-only', 'created' => time(), 'expires_in' => 3600]);
-        $factory = new class ($client) extends ClientFactory {
+        $factory = new class($client) extends ClientFactory {
             public function __construct(private readonly Client $client)
             {
             }
+
             public function forReading(): Client
             {
                 return $this->client;
             }
+
             public function authorized(): Client
             {
                 return $this->client;
             }
         };
+
         return new YoutubeService($factory, $this->dir.'/sessions', 'UC-test');
     }
+
     private function channel(): Response
     {
         return $this->json(['items' => [['id' => 'UC-test', 'snippet' => ['title' => 'Test channel']]]]);
     }
+
     private function video(): array
     {
         return ['id' => 'video-123', 'snippet' => ['title' => 'Launch'], 'status' => ['privacyStatus' => 'private']];
     }
+
     public function testPaginationAndDeletedVideosPreservePlaylistOrder(): void
     {
         $service = $this->service([
@@ -81,6 +91,7 @@ final class YoutubeServiceTest extends TestCase
         self::assertStringContainsString('pageToken=page2', (string) $this->history[3]['request']->getUri());
         self::assertStringNotContainsString('/search', (string) $this->history[1]['request']->getUri());
     }
+
     public function testLimitStopsBeforeFetchingAnotherPage(): void
     {
         $service = $this->service([
@@ -91,6 +102,7 @@ final class YoutubeServiceTest extends TestCase
         self::assertCount(1, iterator_to_array($service->videos(limit: 1)));
         self::assertCount(3, $this->history);
     }
+
     public function testChunkedUploadAndCompletedReceiptAvoidDuplicateInsert(): void
     {
         file_put_contents($this->dir.'/video.mp4', str_repeat('x', 1024 * 1024 + 100));
@@ -113,6 +125,7 @@ final class YoutubeServiceTest extends TestCase
         self::assertFalse($body['status']['selfDeclaredMadeForKids']);
         self::assertStringContainsString('notifySubscribers=false', (string) $this->history[1]['request']->getUri());
     }
+
     public function testInterruptedUploadResumesAtServerOffset(): void
     {
         file_put_contents($this->dir.'/video.mp4', str_repeat('x', 1024 * 1024 + 100));
@@ -137,6 +150,7 @@ final class YoutubeServiceTest extends TestCase
         self::assertSame(100, $this->history[2]['request']->getBody()->getSize());
         self::assertSame('PUT', $this->history[1]['request']->getMethod());
     }
+
     public function testCompletedServerSessionIsRecoveredAfterLostFinalResponse(): void
     {
         file_put_contents($this->dir.'/video.mp4', 'video');
@@ -188,6 +202,7 @@ final class YoutubeServiceTest extends TestCase
         $this->expectExceptionMessage('does not match');
         $service->upload(new Upload($this->dir.'/video.mp4', 'Launch'), 'UC-other');
     }
+
     public function testTokenSavePreservesRefreshAndRestrictsPermissions(): void
     {
         $path = $this->dir.'/token.json';

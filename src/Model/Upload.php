@@ -22,13 +22,13 @@ final readonly class Upload
         public bool $notifySubscribers = false,
         public ?string $thumbnail = null,
     ) {
-        if (!is_file($filename) || !is_readable($filename) || filesize($filename) === 0) {
+        if (!is_file($filename) || !is_readable($filename) || 0 === filesize($filename)) {
             throw new \InvalidArgumentException('Video must be a readable, nonempty file.');
         }
-        if (trim($title) === '' || mb_strlen($title) > 100 || strpbrk($title, '<>') !== false) {
+        if ('' === trim($title) || mb_strlen($title) > 100 || false !== strpbrk($title, '<>')) {
             throw new \InvalidArgumentException('Title must contain 1–100 characters and no angle brackets.');
         }
-        if (strlen($description) > 5000 || strpbrk($description, '<>') !== false) {
+        if (strlen($description) > 5000 || false !== strpbrk($description, '<>')) {
             throw new \InvalidArgumentException('Description must be at most 5000 bytes and contain no angle brackets.');
         }
         if (!in_array($visibility, ['private', 'unlisted', 'public'], true)) {
@@ -38,11 +38,11 @@ final readonly class Upload
             throw new \InvalidArgumentException('Category ID must be numeric.');
         }
         foreach ($tags as $tag) {
-            if (!is_string($tag) || trim($tag) === '') {
+            if (!is_string($tag) || '' === trim($tag)) {
                 throw new \InvalidArgumentException('Tags must be nonempty strings.');
             }
         }
-        if ($thumbnail !== null && (!is_file($thumbnail) || !is_readable($thumbnail) || filesize($thumbnail) === 0 || filesize($thumbnail) > 2 * 1024 * 1024 || !in_array((new \finfo(FILEINFO_MIME_TYPE))->file($thumbnail), ['image/jpeg', 'image/png'], true))) {
+        if (null !== $thumbnail && (!is_file($thumbnail) || !is_readable($thumbnail) || 0 === filesize($thumbnail) || filesize($thumbnail) > 2 * 1024 * 1024 || !in_array((new \finfo(FILEINFO_MIME_TYPE))->file($thumbnail), ['image/jpeg', 'image/png'], true))) {
             throw new \InvalidArgumentException('Thumbnail must be a readable JPEG or PNG of at most 2 MiB.');
         }
     }
@@ -53,7 +53,7 @@ final readonly class Upload
         $snippet->setTitle($this->title);
         $snippet->setDescription($this->description);
         $snippet->setCategoryId($this->categoryId);
-        if ($this->tags !== []) {
+        if ([] !== $this->tags) {
             $snippet->setTags($this->tags);
         }
         $status = new VideoStatus();
