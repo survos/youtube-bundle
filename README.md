@@ -63,6 +63,30 @@ securely transfer the token file. Google testing-mode refresh tokens may expire;
 re-run authorization when access is revoked or the refresh token expires.
 Multiple channels can be handled with separate app configurations/token files.
 
+### Through the application (a tunnel or public URL)
+
+If the application is reachable at a public HTTPS address (for example a cloudflared tunnel to the
+dev machine), let Google call it back instead of a loopback port:
+
+```yaml
+survos_youtube:
+    redirect_uri: 'https://my-app.example.org/youtube/oauth2callback'
+```
+
+```yaml
+# config/routes/survos_youtube.yaml (dev-only import is enough)
+when@dev:
+    survos_youtube:
+        resource: '@SurvosYoutubeBundle/src/Controller/'
+        type: attribute
+```
+
+Register that exact URI on the OAuth client. `youtube:authorize` then opens the consent page in your
+default browser (`--no-open` to skip; the link is also printed, clickable where the terminal supports
+OSC 8 hyperlinks) and waits while the application's
+`/youtube/oauth2callback` route verifies the state, exchanges the code (PKCE) and saves the token.
+Run the command in the same checkout the public URL serves, so both share `token_file`.
+
 ## Fetch videos
 
 ```bash

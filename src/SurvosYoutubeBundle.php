@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Survos\YoutubeBundle;
 
 use Survos\Kit\AbstractSurvosBundle;
+use Survos\YoutubeBundle\Controller\OAuthCallbackController;
 use Survos\YoutubeBundle\Service\ClientFactory;
 use Survos\YoutubeBundle\Service\LoopbackAuthorization;
+use Survos\YoutubeBundle\Service\WebAuthorization;
 use Survos\YoutubeBundle\Service\YoutubeService;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -25,6 +27,7 @@ final class SurvosYoutubeBundle extends AbstractSurvosBundle
             ->scalarNode('token_file')->defaultValue('%kernel.project_dir%/var/youtube/token.json')->end()
             ->scalarNode('upload_directory')->defaultValue('%kernel.project_dir%/var/youtube/uploads')->end()
             ->scalarNode('default_channel')->defaultValue('')->end()
+            ->scalarNode('redirect_uri')->defaultValue('')->info('Public OAuth callback, e.g. https://tunnel.example.org/youtube/oauth2callback (import the bundle controller). Empty: loopback on 127.0.0.1.')->end()
             ->end();
     }
 
@@ -41,5 +44,10 @@ final class SurvosYoutubeBundle extends AbstractSurvosBundle
             ->setArgument('$uploadDirectory', $config['upload_directory'])
             ->setArgument('$defaultChannel', $config['default_channel']);
         $builder->autowire(LoopbackAuthorization::class);
+        $builder->autowire(WebAuthorization::class)
+            ->setArgument('$redirectUri', $config['redirect_uri'])
+            ->setArgument('$tokenFile', $config['token_file']);
+        $builder->autowire(OAuthCallbackController::class)
+            ->addTag('controller.service_arguments');
     }
 }
