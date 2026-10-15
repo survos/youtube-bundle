@@ -153,8 +153,9 @@ Concurrent attempts for the same upload are locked. Rerunning the same command
 resumes from Google's acknowledged byte offset or returns the existing video.
 A failed thumbnail can be retried without re-uploading the video.
 
-A changed title/description/visibility is a **new upload identity**, not an edit to
-an existing video. This first version does not edit or delete published videos,
+A changed title/description/visibility on `youtube:upload` is a **new upload identity**,
+not an edit. To edit a published video, use `youtube:update VIDEO_ID --description-file=... [--title=...]
+[--tags=...] [--category=...]`, which changes only the given fields. This first version does not edit or delete published videos,
 or manage playlists. Do not delete a completion receipt merely
 to change metadata. If Google expires an unfinished session, the command fails
 instead of silently starting a new upload; inspect Studio and the saved state

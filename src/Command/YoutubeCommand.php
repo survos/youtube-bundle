@@ -75,6 +75,30 @@ final class YoutubeCommand
         return Command::SUCCESS;
     }
 
+    #[AsCommand('youtube:update', 'Edit a published video: title, description, tags or category (no re-upload)')]
+    public function update(
+        SymfonyStyle $io,
+        #[Argument('YouTube video ID')] string $videoId,
+        #[Option('New title')] ?string $title = null,
+        #[Option('UTF-8 file containing the new description')] ?string $descriptionFile = null,
+        #[Option('Comma-separated tags (replaces all)')] ?string $tags = null,
+        #[Option('YouTube category ID')] ?string $category = null,
+    ): int {
+        if (null !== $descriptionFile && (!is_file($descriptionFile) || !is_readable($descriptionFile))) {
+            throw new \InvalidArgumentException('Description file must be readable.');
+        }
+        $video = $this->youtube->updateMetadata(
+            $videoId,
+            $title,
+            null === $descriptionFile ? null : file_get_contents($descriptionFile),
+            null === $tags ? null : array_values(array_filter(array_map('trim', explode(',', $tags)))),
+            $category,
+        );
+        $io->success(\sprintf('Updated "%s": https://www.youtube.com/watch?v=%s', $video->getSnippet()?->getTitle(), $videoId));
+
+        return Command::SUCCESS;
+    }
+
     #[AsCommand('youtube:captions', 'Add or replace a caption track (SRT/WebVTT) on an uploaded video')]
     public function captions(
         SymfonyStyle $io,

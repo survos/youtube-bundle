@@ -215,4 +215,41 @@ final class YoutubeService
             throw $e;
         }
     }
+
+    /**
+     * Edit a published video's metadata in place (no re-upload). Only the given fields change; the
+     * rest of the snippet is read back first, since videos.update replaces the whole part.
+     *
+     * @param list<string>|null $tags
+     */
+    public function updateMetadata(string $videoId, ?string $title = null, ?string $description = null, ?array $tags = null, ?string $categoryId = null): Video
+    {
+        $youtube = new YouTube($this->clients->authorized());
+        $video = $youtube->videos->listVideos('snippet', ['id' => $videoId])->getItems()[0]
+            ?? throw new \InvalidArgumentException(\sprintf('Video %s not found on the authorized channel.', $videoId));
+        $snippet = $video->getSnippet();
+        if (null !== $title) {
+            if ('' === trim($title) || mb_strlen($title) > 100 || false !== strpbrk($title, '<>')) {
+                throw new \InvalidArgumentException('Title must contain 1–100 characters and no angle brackets.');
+            }
+            $snippet->setTitle($title);
+        }
+        if (null !== $description) {
+            if (\strlen($description) > 5000 || false !== strpbrk($description, '<>')) {
+                throw new \InvalidArgumentException('Description must be at most 5000 bytes and contain no angle brackets.');
+            }
+            $snippet->setDescription($description);
+        }
+        if (null !== $tags) {
+            $snippet->setTags($tags);
+        }
+        if (null !== $categoryId) {
+            $snippet->setCategoryId($categoryId);
+        }
+        $update = new Video();
+        $update->setId($videoId);
+        $update->setSnippet($snippet);
+
+        return $youtube->videos->update('snippet', $update);
+    }
 }
