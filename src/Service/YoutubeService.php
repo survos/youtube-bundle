@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Survos\YoutubeBundle\Service;
 
 use Google\Http\MediaFileUpload;
+use Google\Service\Exception as GoogleServiceException;
 use Google\Service\YouTube;
+use Google\Service\YouTube\Caption;
+use Google\Service\YouTube\CaptionSnippet;
 use Google\Service\YouTube\Channel;
 use Google\Service\YouTube\Video;
 use Survos\YoutubeBundle\Model\Upload;
@@ -167,6 +170,49 @@ final class YoutubeService
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);
+        }
+    }
+
+    /**
+     * Add a caption track (SRT, WebVTT, ...) to a video, or replace the uploaded track with the same
+     * language and name, so a rerun never stacks duplicates (automatic captions are left alone). Needs the youtube.force-ssl scope
+     * (authorizations made before caption support must run youtube:authorize again).
+     */
+    public function uploadCaptions(string $videoId, string $file, string $language = 'en', string $name = ''): Caption
+    {
+        if (!is_file($file) || !is_readable($file) || 0 === filesize($file) || filesize($file) > 100 * 1024 * 1024) {
+            throw new \InvalidArgumentException('Captions must be a readable, nonempty file of at most 100 MB.');
+        }
+        if (!preg_match('/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/', $language)) {
+            throw new \InvalidArgumentException('Language must be a BCP-47 tag such as en or en-US.');
+        }
+        $youtube = new YouTube($this->clients->authorized());
+        $existing = null;
+        foreach ($youtube->captions->listCaptions('snippet', $videoId)->getItems() as $track) {
+            // Only uploaded ("standard") tracks; YouTube's automatic (ASR) captions cannot be updated.
+            if ('standard' === $track->getSnippet()?->getTrackKind() && $track->getSnippet()?->getLanguage() === $language && $track->getSnippet()?->getName() === $name) {
+                $existing = $track;
+                break;
+            }
+        }
+        $media = ['data' => file_get_contents($file), 'mimeType' => 'application/octet-stream', 'uploadType' => 'multipart'];
+        try {
+            if (null !== $existing) {
+                return $youtube->captions->update('snippet', $existing, $media);
+            }
+            $snippet = new CaptionSnippet();
+            $snippet->setVideoId($videoId);
+            $snippet->setLanguage($language);
+            $snippet->setName($name);
+            $caption = new Caption();
+            $caption->setSnippet($snippet);
+
+            return $youtube->captions->insert('snippet', $caption, $media);
+        } catch (GoogleServiceException $e) {
+            if (403 === $e->getCode()) {
+                throw new \RuntimeException('YouTube refused the captions (403). If this token predates caption support, run youtube:authorize again.', 403, $e);
+            }
+            throw $e;
         }
     }
 }

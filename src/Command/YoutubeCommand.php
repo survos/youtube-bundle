@@ -30,7 +30,7 @@ final class YoutubeCommand
         SymfonyStyle $io,
         #[Option('Local OAuth callback port (loopback mode, when no redirect_uri is configured)')] int $port = 8769,
         #[Option('Seconds to wait for consent')] int $timeout = 180,
-        #[Option('Open the consent page in the default browser (interactive runs)')] bool $open = true,
+        #[Option('Open the consent page in the default browser')] bool $open = true,
     ): int {
         // Open the browser; also print a clickable link (OSC 8) and the raw URL as fallbacks.
         $show = static function (string $url) use ($io, $open): void {
@@ -40,7 +40,7 @@ final class YoutubeCommand
                 '',
                 \sprintf('<comment>%s</comment>', $url),
             ]);
-            if ($open && $io->isInteractive() && self::openInBrowser($url)) {
+            if ($open && self::openInBrowser($url)) {
                 $io->writeln('Opened in your browser.');
             }
         };
@@ -75,6 +75,20 @@ final class YoutubeCommand
         return Command::SUCCESS;
     }
 
+    #[AsCommand('youtube:captions', 'Add or replace a caption track (SRT/WebVTT) on an uploaded video')]
+    public function captions(
+        SymfonyStyle $io,
+        #[Argument('YouTube video ID')] string $videoId,
+        #[Argument('Caption file (SRT or WebVTT)')] string $file,
+        #[Option('Caption language (BCP-47)')] string $language = 'en',
+        #[Option('Track name; empty is the default track for the language')] string $name = '',
+    ): int {
+        $track = $this->youtube->uploadCaptions($videoId, $file, $language, $name);
+        $io->success(\sprintf('Captions %s (%s) on https://www.youtube.com/watch?v=%s', $track->getId(), $language, $videoId));
+
+        return Command::SUCCESS;
+    }
+
     #[AsCommand('youtube:fetch', 'Stream channel videos as JSON Lines (no database writes)')]
     public function fetch(SymfonyStyle $io, #[Argument('Channel ID; defaults to configured channel')] ?string $channel = null, #[Option('Maximum videos; 0 = all')] int $limit = 0): int
     {
@@ -99,7 +113,12 @@ final class YoutubeCommand
         #[Option('Declare the video as made for kids')] bool $madeForKids = false,
         #[Option('Notify subscribers (off by default)')] bool $notify = false,
         #[Option('Validate local inputs without network requests')] bool $dryRun = false,
+        #[Option('Caption file (SRT/WebVTT) to add after the upload')] ?string $captions = null,
+        #[Option('Caption language (BCP-47)')] string $captionLanguage = 'en',
     ): int {
+        if (null !== $captions && (!is_file($captions) || !is_readable($captions))) {
+            throw new \InvalidArgumentException('Caption file must be readable.');
+        }
         if (null !== $descriptionFile && (!is_file($descriptionFile) || !is_readable($descriptionFile))) {
             throw new \InvalidArgumentException('Description file must be readable.');
         }
@@ -115,6 +134,10 @@ final class YoutubeCommand
         $io->writeln('Actual visibility: '.($actual ?? 'unknown'));
         if ($actual !== $visibility) {
             $io->warning('Requested visibility differs from YouTube. Unaudited API projects may be restricted to private uploads.');
+        }
+        if (null !== $captions) {
+            $track = $this->youtube->uploadCaptions($video->getId(), $captions, $captionLanguage);
+            $io->writeln(\sprintf('Captions: %s (%s)', $track->getId(), $captionLanguage));
         }
 
         return Command::SUCCESS;

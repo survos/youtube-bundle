@@ -141,7 +141,7 @@ A failed thumbnail can be retried without re-uploading the video.
 
 A changed title/description/visibility is a **new upload identity**, not an edit to
 an existing video. This first version does not edit or delete published videos,
-manage playlists, or upload captions. Do not delete a completion receipt merely
+or manage playlists. Do not delete a completion receipt merely
 to change metadata. If Google expires an unfinished session, the command fails
 instead of silently starting a new upload; inspect Studio and the saved state
 before deliberately removing that session. Losing the initial session URL in a
@@ -153,6 +153,18 @@ to **private**, regardless of the requested setting. This bundle reports that
 mismatch rather than promising public/unlisted availability. Video processing
 continues asynchronously after upload; the returned URL is not a claim that HD
 processing or copyright checks have completed.
+
+## Captions
+
+```bash
+bin/console youtube:captions VIDEO_ID ./captions.srt --language=en
+# or in one go:
+bin/console youtube:upload ./video.mp4 --title=... --captions=./captions.srt
+```
+
+Adds a caption track (SRT or WebVTT), or replaces the track with the same language and name, so
+reruns never stack duplicates. Captions need the `youtube.force-ssl` scope: tokens authorized
+before caption support must run `youtube:authorize` again. Each insert costs 400 quota units.
 
 ## Verification
 

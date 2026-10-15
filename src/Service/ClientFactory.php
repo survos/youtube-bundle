@@ -41,7 +41,8 @@ class ClientFactory
         } else {
             throw new \RuntimeException('Configure survos_youtube OAuth credentials (client_id/client_secret or auth_config).');
         }
-        $client->setScopes([YouTube::YOUTUBE_UPLOAD, YouTube::YOUTUBE_READONLY]);
+        // force-ssl is the scope captions.insert/update require; upload and readonly cover the rest.
+        $client->setScopes([YouTube::YOUTUBE_UPLOAD, YouTube::YOUTUBE_READONLY, YouTube::YOUTUBE_FORCE_SSL]);
         $client->setAccessType('offline');
         $client->setPrompt('consent');
 

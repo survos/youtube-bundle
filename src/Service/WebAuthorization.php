@@ -52,6 +52,9 @@ final class WebAuthorization
     /** True while an authorization started by start() is still waiting for its callback. */
     public function pending(): bool
     {
+        // The callback runs in another process; drop PHP's cached stat so polling sees it land.
+        clearstatcache(true, $this->pendingFile());
+
         return is_file($this->pendingFile());
     }
 
