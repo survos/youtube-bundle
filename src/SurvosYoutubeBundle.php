@@ -27,6 +27,7 @@ final class SurvosYoutubeBundle extends AbstractSurvosBundle
             ->scalarNode('token_file')->defaultValue('%kernel.project_dir%/var/youtube/token.json')->end()
             ->scalarNode('upload_directory')->defaultValue('%kernel.project_dir%/var/youtube/uploads')->end()
             ->scalarNode('default_channel')->defaultValue('')->end()
+            ->scalarNode('refresh_token')->defaultValue('')->info('Offline refresh token from an earlier youtube:authorize (e.g. from the YOUTUBE_REFRESH_TOKEN env var): upload without authorizing on this machine.')->end()
             ->scalarNode('redirect_uri')->defaultValue('')->info('Public OAuth callback, e.g. https://tunnel.example.org/youtube/oauth2callback (import the bundle controller). Empty: loopback on 127.0.0.1.')->end()
             ->end();
     }
@@ -39,7 +40,8 @@ final class SurvosYoutubeBundle extends AbstractSurvosBundle
             ->setArgument('$clientId', $config['client_id'])
             ->setArgument('$clientSecret', $config['client_secret'])
             ->setArgument('$authConfig', $config['auth_config'])
-            ->setArgument('$tokenFile', $config['token_file']);
+            ->setArgument('$tokenFile', $config['token_file'])
+            ->setArgument('$refreshToken', $config['refresh_token']);
         $builder->autowire(YoutubeService::class)
             ->setArgument('$uploadDirectory', $config['upload_directory'])
             ->setArgument('$defaultChannel', $config['default_channel']);

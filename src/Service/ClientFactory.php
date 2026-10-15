@@ -15,6 +15,7 @@ class ClientFactory
         private readonly string $clientSecret = '',
         private readonly string $authConfig = '',
         private readonly string $tokenFile = '',
+        #[\SensitiveParameter] private readonly string $refreshToken = '',
     ) {
     }
 
@@ -53,8 +54,13 @@ class ClientFactory
     {
         $client = $this->forAuthorization();
         $token = PrivateJsonFile::read($this->tokenFile);
+        if (empty($token['access_token']) && '' !== $this->refreshToken) {
+            // Configured refresh token (e.g. YOUTUBE_REFRESH_TOKEN): no youtube:authorize on this machine.
+            // The access token it yields is cached in token_file like any other.
+            $token = ['access_token' => 'expired', 'created' => 0, 'expires_in' => 0, 'refresh_token' => $this->refreshToken];
+        }
         if (empty($token['access_token'])) {
-            throw new \RuntimeException('Run youtube:authorize to authorize this channel before uploading.');
+            throw new \RuntimeException('Run youtube:authorize to authorize this channel before uploading, or configure survos_youtube.refresh_token.');
         }
         $client->setAccessToken($token);
         if ($client->isAccessTokenExpired()) {

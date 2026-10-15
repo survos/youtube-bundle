@@ -87,6 +87,20 @@ OSC 8 hyperlinks) and waits while the application's
 `/youtube/oauth2callback` route verifies the state, exchanges the code (PKCE) and saves the token.
 Run the command in the same checkout the public URL serves, so both share `token_file`.
 
+### Without authorizing on every machine
+
+Consent cannot be skipped for uploads (API keys only read public data; service accounts cannot own
+channels), but it is needed once. The resulting refresh token can travel as configuration, so
+other checkouts and servers upload as the same channel without `youtube:authorize`:
+
+```yaml
+survos_youtube:
+    refresh_token: '%env(YOUTUBE_REFRESH_TOKEN)%'   # from token_file's "refresh_token" after authorizing
+```
+
+Keep it in `.env.local` or the secrets vault, never in git. Google may expire refresh tokens of
+OAuth clients still in testing mode; authorize again (and update the variable) if that happens.
+
 ## Fetch videos
 
 ```bash
